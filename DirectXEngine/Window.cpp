@@ -60,14 +60,29 @@ Window::~Window()
 	DestroyWindow(hWnd);
 }
 
-LRESULT __stdcall Window::HandleMsgSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-
+LRESULT WINAPI Window::HandleMsgSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	// use create parameter passed in from CreateWindow() to store window class pointer
+	if (msg == WM_NCCREATE) {
+		// extract ptr to window class from creation data
+		const CREATESTRUCTW* const pCreate = reinterpret_cast<CREATESTRUCTW*>(lParam);
+		Window* const pWnd = static_cast<Window*>(pCreate->lpCreateParams);
+		// set WinAPI-managed user data to store ptr to window class
+		SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pWnd));
+		// set message proc to normal (non-setup) handler now that setup is finished
+		SetWindowLongPtr(hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&Window::HandleMsgThunk));
+		// forward message to window class handler
+		return pWnd->HandleMsg(hWnd, msg, wParam, lParam);
+	}
+	// if we get a message before the WM_NCCREATE message, handle with the default handler
+	return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-LRESULT __stdcall Window::HandleMsgThunk(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT WINAPI Window::HandleMsgThunk(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	
+	// retrieve ptr to window class	
+	Window* const pWnd = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+	// forward message to window class handler
+	return pWnd->HandleMsg(hWnd, msg, wParam, lParam);
 }
 
 LRESULT Window::HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
