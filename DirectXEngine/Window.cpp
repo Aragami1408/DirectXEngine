@@ -22,12 +22,16 @@ Window::WindowClass::WindowClass() noexcept : hInst(GetModuleHandle(nullptr)) {
 	wc.cbClsExtra = 0;
 	wc.cbWndExtra = 0;
 	wc.hInstance = GetInstance();
-	wc.hIcon = static_cast<HICON>(LoadImage(hInst, MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 32, 32, 0));
+	// wc.hIcon = (HICON) LoadImage(nullptr, "directx.ico", IMAGE_ICON, 32, 32, 0);
+	// wc.hIcon = static_cast<HICON>(LoadImage(hInst, MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 32, 32, 0));
+	wc.hIcon = nullptr;
 	wc.hCursor = nullptr;
 	wc.hbrBackground = nullptr;
 	wc.lpszMenuName = nullptr;
 	wc.lpszClassName = GetName();
-	wc.hIconSm = static_cast<HICON>(LoadImage(hInst, MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 16, 16, 0));
+	// wc.hIconSm = (HICON) LoadImage(nullptr, "directx.ico", IMAGE_ICON, 16, 16, 0);
+	// wc.hIconSm = static_cast<HICON>(LoadImage(NULL, MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 16, 16, 0));
+	wc.hIconSm = nullptr;
 	RegisterClassEx(&wc);
 }
 
@@ -58,6 +62,18 @@ Window::Window(int width, int height, const char* name)
 		nullptr, nullptr, WindowClass::GetInstance(), this
 	);
 	if (hWnd == nullptr) throw DXEWND_LAST_EXCEPT();
+
+	// Setting program icon
+	HANDLE hIcon = LoadImage(0, "directx.ico", IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE);
+	if (hIcon) {
+		// Change both icons the the same icon handle.
+		SendMessageW(hWnd, WM_SETICON, ICON_SMALL, (LPARAM) hIcon);
+		SendMessageW(hWnd, WM_SETICON, ICON_SMALL, (LPARAM) hIcon);
+
+		// This will ensure that the application icon gets changed too
+		SendMessage(GetWindow(hWnd, GW_OWNER), WM_SETICON, ICON_SMALL, (LPARAM) hIcon);
+    	SendMessage(GetWindow(hWnd, GW_OWNER), WM_SETICON, ICON_BIG, (LPARAM) hIcon);
+	}
 	// show window
 	ShowWindow(hWnd, SW_SHOWDEFAULT);
 }
@@ -70,6 +86,23 @@ Window::~Window()
 void Window::SetTitle(const std::string& title)
 {
 	if (SetWindowText(hWnd, title.c_str()) == 0) throw DXEWND_LAST_EXCEPT();
+}
+
+std::optional<int> Window::ProcessMessage()
+{
+	MSG msg;
+	// while queue has messages, remove and dispatch them
+	while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+		// check for quit because PeekMessage does not signal this via return
+		if (msg.message == WM_QUIT) {
+			// return optional wrapping int
+			return msg.wParam;
+		}
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+
+    return {};
 }
 
 LRESULT WINAPI Window::HandleMsgSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
