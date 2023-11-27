@@ -135,6 +135,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="App.cpp" />
     <ClCompile Include="DXEException.cpp" />
     <ClCompile Include="Keyboard.cpp" />
     <ClCompile Include="main.cpp" />
@@ -143,6 +144,7 @@
     <ClCompile Include="WindowsMessageMap.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="App.h" />
     <ClInclude Include="DXEException.h" />
     <ClInclude Include="DXEWin.h" />
     <ClInclude Include="Keyboard.h" />
