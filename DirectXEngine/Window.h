@@ -3,6 +3,8 @@
 #include "DXEException.h"
 #include "resource.h"
 #include "Keyboard.h"
+#include "Mouse.h"
+
 class Window {
 public:
 	class Exception : public DXEException {
@@ -35,12 +37,14 @@ public:
 	~Window();
 	Window(const Window&) = delete;
 	Window& operator=(const Window&) = delete;
+	void SetTitle(const std::string &title);
 private:
 	static LRESULT WINAPI HandleMsgSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	static LRESULT WINAPI HandleMsgThunk(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	LRESULT HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 public:
 	Keyboard kbd;
+	Mouse mouse;
 private:
 	int width;
 	int height;
