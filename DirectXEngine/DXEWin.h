@@ -8,7 +8,7 @@
 // (or all) of these defines (it will increase build time though).
 #ifndef FULL_WINTARD
 #define WIN32_LEAN_AND_MEAN
-#undef UNICODE
+#undef UNICODE // I hate putting 'L' before every string literals
 #define NOGDICAPMASKS
 #define NOSYSMETRICS
 #define NOMENUS

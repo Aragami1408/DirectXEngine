@@ -45,7 +45,8 @@ Window::Window(int width, int height, const char* name)
 	wr.right = width + wr.left;
 	wr.top = 100;
 	wr.bottom = height + wr.top;
-	if (FAILED(AdjustWindowRect(&wr, WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU, FALSE))) {
+	BOOL isAdjustedSuccessfully = AdjustWindowRect(&wr, WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU, FALSE);
+	if (isAdjustedSuccessfully == 0) {
 		throw DXEWND_LAST_EXCEPT();
 	}
 	// create window and get hWnd
@@ -95,6 +96,24 @@ LRESULT Window::HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	switch (msg) {
 	case WM_CLOSE:
 		PostQuitMessage(0);
+		break;
+
+	// clear keystate when window loses focus to prevent input getting 
+	case WM_KILLFOCUS:
+		kbd.ClearState();
+		break;
+
+	// KEYBOARD MESSAGES
+	case WM_KEYDOWN:
+	case WM_SYSKEYDOWN:
+		if (!(lParam & 0x40000000) || kbd.AutorepeatIsEnabled()) kbd.OnKeyPressed(static_cast<unsigned char>(wParam));
+		break;
+	case WM_KEYUP:
+	case WM_SYSKEYUP:
+		kbd.OnKeyReleased(static_cast<unsigned char>(wParam));
+		break;
+	case WM_CHAR:
+		kbd.OnChar(static_cast<unsigned char>(wParam));
 		break;
 	}
 
