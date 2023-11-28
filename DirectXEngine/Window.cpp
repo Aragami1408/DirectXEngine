@@ -1,6 +1,5 @@
 #include "Window.h"
 
-#include <ostream>
 
 Window::WindowClass Window::WindowClass::wndClass;
 
@@ -67,15 +66,18 @@ Window::Window(int width, int height, const char* name)
 	HANDLE hIcon = LoadImage(0, "directx.ico", IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE);
 	if (hIcon) {
 		// Change both icons the the same icon handle.
-		SendMessageW(hWnd, WM_SETICON, ICON_SMALL, (LPARAM) hIcon);
-		SendMessageW(hWnd, WM_SETICON, ICON_SMALL, (LPARAM) hIcon);
+		SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM) hIcon);
+		SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM) hIcon);
 
 		// This will ensure that the application icon gets changed too
 		SendMessage(GetWindow(hWnd, GW_OWNER), WM_SETICON, ICON_SMALL, (LPARAM) hIcon);
     	SendMessage(GetWindow(hWnd, GW_OWNER), WM_SETICON, ICON_BIG, (LPARAM) hIcon);
 	}
-	// show window
+
+	// newly created windows start off as hidden
 	ShowWindow(hWnd, SW_SHOWDEFAULT);
+	// create graphics object
+	pGfx = std::make_unique<Graphics>(hWnd);
 }
 
 Window::~Window()
@@ -88,7 +90,7 @@ void Window::SetTitle(const std::string& title)
 	if (SetWindowText(hWnd, title.c_str()) == 0) throw DXEWND_LAST_EXCEPT();
 }
 
-std::optional<int> Window::ProcessMessage()
+std::optional<int> Window::ProcessMessages()
 {
 	MSG msg;
 	// while queue has messages, remove and dispatch them
@@ -103,6 +105,11 @@ std::optional<int> Window::ProcessMessage()
 	}
 
     return {};
+}
+
+Graphics &Window::Gfx()
+{
+	return *pGfx;
 }
 
 LRESULT WINAPI Window::HandleMsgSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -137,7 +144,6 @@ LRESULT Window::HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		PostQuitMessage(0);
 		break;
 
-	// clear keystate when window loses focus to prevent input getting 
 	case WM_KILLFOCUS:
 		kbd.ClearState();
 		break;
@@ -177,19 +183,19 @@ LRESULT Window::HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 	} break;
 	case WM_LBUTTONDOWN: {
-		 const POINTS pt = MAKEPOINTS(lParam);
+		const POINTS pt = MAKEPOINTS(lParam);
 		mouse.OnLeftPressed(pt.x, pt.y);
 	} break;
 	case WM_RBUTTONDOWN: {
-		 const POINTS pt = MAKEPOINTS(lParam);
+		const POINTS pt = MAKEPOINTS(lParam);
 		mouse.OnRightPressed(pt.x, pt.y);
 	} break;
 	case WM_LBUTTONUP: {
-		 const POINTS pt = MAKEPOINTS(lParam);
+		const POINTS pt = MAKEPOINTS(lParam);
 		mouse.OnLeftReleased(pt.x, pt.y);
 	} break;
 	case WM_RBUTTONUP: {
-		 const POINTS pt = MAKEPOINTS(lParam);
+		const POINTS pt = MAKEPOINTS(lParam);
 		mouse.OnRightReleased(pt.x, pt.y);
 	} break;
 	case WM_MOUSEWHEEL: {
@@ -245,5 +251,3 @@ std::string Window::Exception::GetErrorString() const noexcept
 {
 	return TranslateErrorCode(hr);
 }
-
-

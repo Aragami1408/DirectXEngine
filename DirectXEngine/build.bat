@@ -9,7 +9,7 @@ SET cc=cl.exe
 SET c_filenames= 
 FOR %%f in (*.cpp) do SET c_filenames=!c_filenames! %%f
 
-SET compiler_flags=/Zc:preprocessor /wd4090 /wd5105 /EHsc /MP /Ot /std:c++latest
+SET compiler_flags=/Zc:preprocessor /wd4090 /wd5105 /wd4244 /EHsc /MP /Ot /std:c++latest
 SET linker_flags=/link /DEBUG /SUBSYSTEM:WINDOWS shell32.lib user32.lib winmm.lib userenv.lib gdi32.lib
 SET output=/Fe.\bin\DXGame /Fo.\bin\int\ /MT /fp:fast
 SET defines=/D_CRT_SECURE_NO_WARNINGS
