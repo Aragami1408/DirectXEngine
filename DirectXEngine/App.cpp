@@ -2,7 +2,7 @@
 
 #include <iomanip>
 
-App::App() : wnd(1280, 720, "DirectX Game Window")
+App::App() : wnd(1280, 720, "DXEngine Game Window")
 {
 }
 
