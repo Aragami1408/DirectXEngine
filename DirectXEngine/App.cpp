@@ -2,7 +2,7 @@
 
 #include <iomanip>
 
-App::App() : wnd(1280, 720, "DXEngine Game Window")
+App::App() : wnd(800, 600, "DXEngine Game Window")
 {
 }
 
@@ -20,6 +20,7 @@ int App::Go()
 void App::DoFrame()
 {
 	const float c = sin(timer.Peek()) / 2.0f + 0.5f;
-	wnd.Gfx().ClearBuffer(c,c,1.0f);
+	wnd.Gfx().ClearBuffer(1.0f,c,c);
+	wnd.Gfx().DrawTestTriangle();
 	wnd.Gfx().EndFrame();
 }

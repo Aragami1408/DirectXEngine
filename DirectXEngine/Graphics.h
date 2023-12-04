@@ -25,10 +25,19 @@ public:
 		HRESULT hr;
 		std::string info;
 	};
+	class InfoException : public Exception {
+	public:
+		InfoException(int line, const char* file, std::vector<std::string> infoMsgs = {});
+		const char* what() const noexcept override;
+		const char* GetType() const noexcept override;
+		std::string GetErrorInfo() const noexcept;
+	private:
+		std::string info;
+	};
 	class DeviceRemovedException : public HrException {
 		using HrException::HrException;
 	public:
-		const char *GetType() const noexcept override;
+		const char* GetType() const noexcept override;
 	private:
 		std::string reason;
 	};
@@ -39,6 +48,7 @@ public:
 	~Graphics() = default;
 	void EndFrame();
 	void ClearBuffer(float red, float green, float blue) noexcept;
+	void DrawTestTriangle();
 private:
 #ifndef NDEBUG
 	DxgiInfoManager infoManager;
@@ -61,5 +71,6 @@ private:
 #else
 #define GFX_EXCEPT(hr) Graphics::HrException( __LINE__,__FILE__,(hr) )
 #define GFX_THROW_INFO(hrcall) GFX_THROW_NOINFO(hrcall)
-#define GFX_DEVICE_REMOVED_EXCEPT(hr) Graphics::DeviceRemovedException( __LINE__,__FILE__,(hr) )	
+#define GFX_DEVICE_REMOVED_EXCEPT(hr) Graphics::DeviceRemovedException( __LINE__,__FILE__,(hr) )
+#define GFX_THROW_INFO_ONLY(call) (call)
 #endif

@@ -1,19 +1,21 @@
 #include "Graphics.h"
 #include "dxerr.h"
 #include <sstream>
+#include <d3dcompiler.h>
 
 namespace wrl = Microsoft::WRL;
 
 #pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "D3DCompiler.lib")
 
 #define GFX_THROW_FAILED(hrcall) if (FAILED(hr = (hrcall))) throw Graphics::HrException(__LINE__, __FILE__, hr);
 
 Graphics::Graphics(HWND hWnd)
 {
     DXGI_SWAP_CHAIN_DESC sd = {0};
-    sd.BufferDesc.Width = 0;
-    sd.BufferDesc.Height = 0;
-    sd.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    sd.BufferDesc.Width = 0; 
+    sd.BufferDesc.Height = 0; 
+    sd.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; 
     sd.BufferDesc.RefreshRate.Numerator = 0;
     sd.BufferDesc.RefreshRate.Denominator = 0;
     sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
@@ -26,7 +28,7 @@ Graphics::Graphics(HWND hWnd)
     sd.Windowed = TRUE;
     sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
     sd.Flags = 0;
-    
+
     UINT swapCreateFlags = 0u;
 #ifndef DEBUG
     swapCreateFlags |= D3D11_CREATE_DEVICE_DEBUG;
@@ -56,8 +58,6 @@ Graphics::Graphics(HWND hWnd)
     GFX_THROW_FAILED(pSwap->GetBuffer(0, __uuidof(ID3D11Resource), &pBackBuffer));
     GFX_THROW_FAILED(pDevice->CreateRenderTargetView(pBackBuffer.Get(), nullptr, &pTarget));
 
-    pBackBuffer->Release();
-    
 }
 
 void Graphics::EndFrame()
@@ -66,7 +66,7 @@ void Graphics::EndFrame()
 #ifndef NDEBUG
     infoManager.Set();
 #endif
-    
+
     if (FAILED(hr = pSwap->Present(1u, 0u))) {
         if (hr == DXGI_ERROR_DEVICE_REMOVED) {
             throw GFX_DEVICE_REMOVED_EXCEPT(pDevice->GetDeviceRemovedReason());
@@ -81,6 +81,124 @@ void Graphics::ClearBuffer(float red, float green, float blue) noexcept
 {
     const float color[] = {red, green, blue, 1.0f};
     pContext->ClearRenderTargetView(pTarget.Get(), color);
+}
+
+static inline HRESULT __CompileShader(LPCWSTR srcFile, LPCSTR entryPoint, LPCSTR profile, ID3DBlob** blob) {
+    if (!srcFile || !entryPoint || !profile || !blob) return E_INVALIDARG;
+
+    *blob = nullptr;
+
+    UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
+#if defined( DEBUG ) || defined( _DEBUG )
+    flags |= D3DCOMPILE_DEBUG;
+#endif
+
+    const D3D_SHADER_MACRO defines[] =
+    {
+        "EXAMPLE_DEFINE", "1",
+        NULL, NULL
+    };
+
+    ID3DBlob* shaderBlob = NULL;
+    ID3DBlob* errorBlob = NULL;
+    HRESULT hr = D3DCompileFromFile(srcFile, defines, D3D_COMPILE_STANDARD_FILE_INCLUDE, entryPoint, profile, flags, 0, &shaderBlob, &errorBlob);
+    if (FAILED(hr)) {
+        if (errorBlob)
+        {
+            OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+            errorBlob->Release();
+        }
+
+        if (shaderBlob)
+            shaderBlob->Release();
+
+        return hr;
+    }
+
+    *blob = shaderBlob;
+
+    return hr;
+
+}
+
+void Graphics::DrawTestTriangle() {
+    namespace wrl = Microsoft::WRL;
+
+    HRESULT hr;
+
+    struct Vertex {
+        float x;
+        float y;
+    };
+
+    // create vertex buffer ( 1 2d triangle at center of screen)
+    const Vertex vertices[] = {
+        { 0.0f, 0.5f },
+        { 0.5f, -0.5f },
+        { -0.5f, -0.5f }
+    };
+    wrl::ComPtr<ID3D11Buffer> pVertexBuffer;
+    D3D11_BUFFER_DESC bd = { 0 };
+    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    bd.Usage = D3D11_USAGE_DEFAULT;
+    bd.CPUAccessFlags = 0u;
+    bd.MiscFlags = 0u;
+    bd.ByteWidth = sizeof(vertices);
+    bd.StructureByteStride = sizeof(Vertex);
+    D3D11_SUBRESOURCE_DATA sd = {};
+    sd.pSysMem = vertices;
+    GFX_THROW_INFO(pDevice->CreateBuffer(&bd, &sd, &pVertexBuffer));
+
+    // Bind vertex buffer to pipeline
+    const UINT stride = sizeof(Vertex);
+    const UINT offset = 0u;
+    pContext->IASetVertexBuffers(0u, 1u, pVertexBuffer.GetAddressOf(), &stride, &offset);
+
+    // create pixel shader
+    wrl::ComPtr<ID3D11PixelShader> pPixelShader;
+    wrl::ComPtr<ID3DBlob> pBlob;
+    GFX_THROW_INFO(__CompileShader(L"PixelShader.hlsl", "main", "ps_4_0_level_9_1", &pBlob));
+    GFX_THROW_INFO(pDevice->CreatePixelShader(pBlob->GetBufferPointer(), pBlob->GetBufferSize(), nullptr, &pPixelShader));
+
+    // bind pixel shader
+    pContext->PSSetShader(pPixelShader.Get(), nullptr, 0u);
+
+    // create vertex shader
+    wrl::ComPtr<ID3D11VertexShader> pVertexShader;
+    GFX_THROW_INFO(__CompileShader(L"VertexShader.hlsl", "main", "vs_4_0_level_9_1", &pBlob));
+    GFX_THROW_INFO(pDevice->CreateVertexShader(pBlob->GetBufferPointer(), pBlob->GetBufferSize(), nullptr, &pVertexShader));
+
+    // bind vertex shader
+    pContext->VSSetShader(pVertexShader.Get(), nullptr, 0u);
+
+    // input (vertex) layout (2d position only)
+    wrl::ComPtr<ID3D11InputLayout> pInputLayout;
+    const D3D11_INPUT_ELEMENT_DESC ied[] = {
+        {"Position", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+    };
+    GFX_THROW_INFO(pDevice->CreateInputLayout(ied, (UINT)std::size(ied), pBlob->GetBufferPointer(), pBlob->GetBufferSize(), &pInputLayout));
+    // bind vertex layout
+    pContext->IASetInputLayout(pInputLayout.Get());
+
+    // bind render target
+    pContext->OMSetRenderTargets(1u, pTarget.GetAddressOf(), nullptr);
+
+    // Set primitive topology to triangle list (groups of 3 vertices)
+    pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    // configure viewport
+    D3D11_VIEWPORT vp;
+    vp.Width = 800;
+    vp.Height = 600;
+    vp.MinDepth = 0;
+    vp.MaxDepth = 1;
+    vp.TopLeftX = 0;
+    vp.TopLeftY = 0;
+    pContext->RSSetViewports(1u, &vp);
+
+    
+
+    GFX_THROW_INFO_ONLY(pContext->Draw((UINT)std::size(vertices), 0u));
 }
 
 Graphics::HrException::HrException(int line, const char* file, HRESULT hr, std::vector<std::string> infoMsgs) noexcept
@@ -146,4 +264,35 @@ std::string Graphics::HrException::GetErrorInfo() const noexcept
 const char *Graphics::DeviceRemovedException::GetType() const noexcept
 {
     return "DXEngine Graphics Exception [Device Removed] (DXGI_ERROR_DEVICE_REMOVED)";
+}
+
+Graphics::InfoException::InfoException(int line, const char* file, std::vector<std::string> infoMsgs) : Exception(line, file)
+{
+    // join all info messages with newlines into single string
+    for (const auto& m : infoMsgs) {
+        info += m;
+        info.push_back('\n');
+    }
+    // remove final newline if exists
+    if (!info.empty()) info.pop_back();
+}
+
+const char* Graphics::InfoException::what() const noexcept
+{
+    std::ostringstream oss;
+    oss << GetType() << std::endl
+        << "\n[Error Info]\n" << GetErrorInfo() << std::endl << std::endl;
+    oss << GetOriginString();
+    whatBuffer = oss.str();
+    return whatBuffer.c_str();
+}
+
+const char* Graphics::InfoException::GetType() const noexcept
+{
+    return "DXEngine Graphics Info Exception";
+}
+
+std::string Graphics::InfoException::GetErrorInfo() const noexcept
+{
+    return info;
 }
