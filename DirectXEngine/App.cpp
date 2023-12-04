@@ -2,7 +2,7 @@
 
 #include <iomanip>
 
-App::App() : wnd(800, 600, "DXEngine Game Window")
+App::App() : wnd(800, 600, "Direct3D 11 Game Engine - By Higanbana")
 {
 }
 
@@ -19,8 +19,8 @@ int App::Go()
 
 void App::DoFrame()
 {
-	const float c = sin(timer.Peek()) / 2.0f + 0.5f;
-	wnd.Gfx().ClearBuffer(1.0f,c,c);
+	// const float c = sin(timer.Peek()) / 2.0f + 0.5f;
+	wnd.Gfx().ClearBuffer(1.0f,1.0f,1.0f);
 	wnd.Gfx().DrawTestTriangle();
 	wnd.Gfx().EndFrame();
 }
